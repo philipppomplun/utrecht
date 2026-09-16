@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Utrecht Trip 2026 – EuroParcs De Utrechtse Heuvelrug</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --bg-color: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --text-light: #94A3B8;
+            --border-color: #E2E8F0;
+            --border-hover: #CBD5E1;
+            
+            --accent-dark: #0F172A;
+            --accent-subtle: #F1F5F9;
+            
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+            
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-hover: 0 10px 25px rgba(0, 0, 0, 0.05);
+            --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            overflow-x: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        body {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            background: var(--accent-dark);
+            color: white;
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            width: 100%;
+        }
+
+        .header-title h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title p {
+            color: var(--text-light);
+            font-size: 0.88rem;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .sync-badge {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 8px 14px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+            color: #E2E8F0;
+        }
+
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10B981;
+            border-radius: 50%;
+        }
+
+        .sync-dot.offline { background-color: #F59E0B; }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+            width: 100%;
+        }
+
+        .bento-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        .card-title i { color: var(--text-muted); }
+
+        .col-span-12 { grid-column: span 12; }
+        .col-span-7 { grid-column: span 7; }
+        .col-span-5 { grid-column: span 5; }
+        .col-span-4 { grid-column: span 4; }
+
+        @media (max-width: 1024px) {
+            .col-span-7, .col-span-5, .col-span-4 { grid-column: span 12; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px; }
+            .bento-grid { grid-template-columns: 1fr; gap: 12px; }
+            .col-span-12, .col-span-7, .col-span-5, .col-span-4 { grid-column: span 1; }
+        }
+
+        .countdown-container {
+            background: var(--accent-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .countdown-item { display: flex; flex-direction: column; align-items: center; }
+
+        .countdown-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .countdown-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .weather-main { display: flex; align-items: center; justify-content: space-between; }
+        .weather-temp { font-size: 2.5rem; font-weight: 700; color: var(--text-main); }
+        .weather-info { text-align: right; }
+        .weather-desc { font-size: 0.9rem; font-weight: 600; color: var(--text-main); }
+        .weather-location { font-size: 0.8rem; color: var(--text-muted); }
+
+        .weather-forecast {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .booking-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .detail-box { background-color: var(--accent-subtle); padding: 12px 14px; border-radius: var(--radius-md); }
+        .detail-box label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 3px; }
+        .detail-box .value { font-weight: 700; font-size: 0.88rem; color: var(--text-main); }
+        .detail-box .subvalue { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+        .highlight-badge {
+            display: inline-block;
+            background: var(--accent-subtle);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        #map {
+            height: 320px;
+            width: 100%;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            z-index: 1;
+        }
+
+        .leaflet-popup-content-wrapper { border-radius: var(--radius-sm) !important; font-family: 'Space Grotesk', sans-serif !important; }
+        .leaflet-popup-content { margin: 10px 12px !important; }
+        .map-popup-title { font-weight: 700; font-size: 0.9rem; color: var(--text-main); }
+        .map-popup-cat { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px; }
+        .map-popup-link { display: inline-block; font-size: 0.72rem; font-weight: 600; color: var(--accent-dark); text-decoration: none; border-bottom: 1px solid var(--accent-dark); }
+
+        .pack-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--accent-subtle);
+            padding: 3px;
+            border-radius: var(--radius-md);
+            margin-bottom: 14px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .tab-btn.active { background: white; color: var(--text-main); box-shadow: var(--shadow-sm); }
+
+        .pack-input-group, .expense-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            width: 100%;
+        }
+
+        .pack-input-group input, .activity-input, .expense-input-group input, .expense-input-group select, .modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            outline: none;
+            font-size: 0.85rem;
+            background: white;
+        }
+
+        .pack-input-group input { flex: 1; }
+
+        .btn-add {
+            background: var(--accent-dark);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .todo-list, .expense-list { list-style: none; max-height: 250px; overflow-y: auto; }
+
+        .todo-item, .expense-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: var(--bg-color);
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            border: 1px solid transparent;
+        }
+
+        .todo-item.completed span { text-decoration: line-through; color: var(--text-light); }
+        .todo-left { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+        .todo-checkbox { width: 16px; height: 16px; accent-color: var(--accent-dark); cursor: pointer; flex-shrink: 0; }
+
+        .btn-delete { color: var(--text-light); border: none; background: transparent; cursor: pointer; font-size: 0.85rem; }
+        .btn-delete:hover { color: #EF4444; }
+
+        .link-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+        .quick-link-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.82rem;
+            border: 1px solid var(--border-color);
+        }
+        .quick-link-btn i { color: var(--text-muted); }
+
+        .activity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; margin-top: 14px; }
+
+        .activity-item {
+            background: var(--bg-color);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .activity-tag { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; background: var(--accent-subtle); color: var(--text-muted); display: inline-block; }
+        .activity-title { font-weight: 700; font-size: 0.85rem; margin: 4px 0 2px 0; color: var(--text-main); }
+        .activity-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; }
+
+        .expense-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px; }
+        .expense-stat-card { background: var(--accent-subtle); padding: 10px 12px; border-radius: var(--radius-md); }
+        .expense-stat-card label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 2px; }
+        .expense-stat-card .val { font-size: 1rem; font-weight: 700; color: var(--text-main); }
+        .expense-input-group { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+
+        /* Versteckte Liebesnachricht unten */
+        .secret-love-container {
+            margin-top: 16px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .secret-love-hint {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .secret-love-hint:hover {
+            color: var(--text-muted);
+        }
+
+        .secret-love-message {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        .secret-love-container:hover .secret-love-message {
+            max-height: 50px;
+            opacity: 1;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .btn-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <div class="header-title">
+                <h1><i class="fa-solid fa-compass"></i> Utrecht 2026</h1>
+                <p>EuroParcs De Utrechtse Heuvelrug • 17. Sep – 30. Sep 2026</p>
+            </div>
+            <div class="sync-badge" onclick="openSyncModal()">
+                <span class="sync-dot" id="sync-dot-status"></span>
+                <span id="sync-status-text">Google Sheets</span>
+                <i class="fa-solid fa-gear"></i>
+            </div>
+        </header>
+
+        <div class="bento-grid">
+
+            <div class="bento-card col-span-4">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-stopwatch"></i> Countdown</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Anreise 17.09.</span>
+                </div>
+                <div class="countdown-container">
+                    <div class="countdown-item"><span class="countdown-number" id="cd-days">--</span><span class="countdown-label">Tage</span></div>
+                    <div class="countdown-item"><span class="countdown-number" id="cd-hours">--</span><span class="countdown-label">Std</span></div>
+                    <div class="countdown-item"><span class="countdown-number" id="cd-mins">--</span><span class="countdown-label">Min</span></div>
+                </div>
+            </div>
+
+            <div class="bento-card col-span-4">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-cloud-sun"></i> Wetter Maarn</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Live</span>
+                </div>
+                <div class="weather-main">
+                    <div class="weather-temp" id="w-temp">19°C</div>
+                    <div class="weather-info">
+                        <div class="weather-desc" id="w-desc">Leicht bewölkt</div>
+                        <div class="weather-location">Utrechtse Heuvelrug</div>
+                    </div>
+                </div>
+                <div class="weather-forecast">
+                    <div><span>Do</span><br><strong style="color: var(--text-main);">20°C</strong></div>
+                    <div><span>Fr</span><br><strong style="color: var(--text-main);">18°C</strong></div>
+                    <div><span>Sa</span><br><strong style="color: var(--text-main);">21°C</strong></div>
+                    <div><span>So</span><br><strong style="color: var(--text-main);">19°C</strong></div>
+                </div>
+            </div>
+
+            <div class="bento-card col-span-4">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-arrow-up-right-from-square"></i> Links & Services</span>
+                </div>
+                <div class="link-buttons">
+                    <a href="https://www.ns.nl/en" target="_blank" class="quick-link-btn"><i class="fa-solid fa-train"></i> NS Bahn NL</a>
+                    <a href="https://www.bahn.de" target="_blank" class="quick-link-btn"><i class="fa-solid fa-train-subway"></i> Deutsche Bahn</a>
+                    <a href="https://www.europarcs.nl" target="_blank" class="quick-link-btn"><i class="fa-solid fa-house-user"></i> Mein EuroParcs</a>
+                    <a href="https://www.route.nl" target="_blank" class="quick-link-btn"><i class="fa-solid fa-map-location-dot"></i> Radrouten NL</a>
+                </div>
+            </div>
+
+            <div class="bento-card col-span-7">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-suitcase-rolling"></i> Buchungsdetails</span>
+                    <span class="highlight-badge">B252011002851</span>
+                </div>
+                <div class="booking-details-grid">
+                    <div class="detail-box">
+                        <label><i class="fa-solid fa-location-dot"></i> Adresse Park</label>
+                        <div class="value">EuroParcs De Utrechtse Heuvelrug</div>
+                        <div class="subvalue">Laan van Laag Kanje 1, 3951 KD Maarn</div>
+                    </div>
+                    <div class="detail-box">
+                        <label><i class="fa-solid fa-house"></i> Unterkunft</label>
+                        <div class="value">Hackfort 6</div>
+                        <div class="subvalue">Ferienhaus für 6 Personen</div>
+                    </div>
+                    <div class="detail-box">
+                        <label><i class="fa-solid fa-calendar"></i> Zeitraum</label>
+                        <div class="value">17.09.2026 – 30.09.2026</div>
+                        <div class="subvalue">13 Nächte (Do. – Mi.)</div>
+                    </div>
+                    <div class="detail-box">
+                        <label><i class="fa-solid fa-clock"></i> Check-in / Out</label>
+                        <div class="value">Ab 16:00 Uhr</div>
+                        <div class="subvalue">Check-out bis 10:00 Uhr</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card col-span-5">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-bicycle"></i> Fahrrad-Touren</span>
+                    <span class="highlight-badge">Nationalpark</span>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Direkter Einstieg in das Radnetz ab Maarn:
+                </p>
+                <ul style="font-size: 0.8rem; color: var(--text-main); padding-left: 16px; line-height: 1.6;">
+                    <li><strong>Route 1:</strong> Maarn – Pyramide von Austerlitz (ca. 14 km)</li>
+                    <li><strong>Route 2:</strong> Waldtour nach Amerongen (ca. 22 km)</li>
+                    <li><strong>Route 3:</strong> Tagestour ins Zentrum von Utrecht (ca. 25 km)</li>
+                </ul>
+            </div>
+
+            <div class="bento-card col-span-12">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-map-location-dot"></i> Eure Wunschorte</span>
+                    <span class="highlight-badge">11 Orte</span>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <div class="bento-card col-span-7">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-list-check"></i> Packlisten</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);" id="pack-counter">0 von 0 abgehakt</span>
+                </div>
+
+                <div class="pack-tabs">
+                    <button class="tab-btn active" onclick="switchPackTab('philipp', this)">Philipp</button>
+                    <button class="tab-btn" onclick="switchPackTab('laura', this)">Laura</button>
+                    <button class="tab-btn" onclick="switchPackTab('gemeinsam', this)">Gemeinsam</button>
+                </div>
+
+                <div class="pack-input-group">
+                    <input type="text" id="pack-input" placeholder="Neuer Gegenstand..." onkeypress="handlePackKeyPress(event)">
+                    <button class="btn-add" onclick="addPackItem()"><i class="fa-solid fa-plus"></i></button>
+                </div>
+
+                <ul class="todo-list" id="pack-list-container"></ul>
+            </div>
+
+            <div class="bento-card col-span-5">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-compass"></i> Ausflugsideen</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <input type="text" id="act-title" class="activity-input" placeholder="Titel (z.B. Domturm)" style="flex: 2;">
+                        <input type="text" id="act-category" class="activity-input" placeholder="Kategorie" style="flex: 1;">
+                    </div>
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <input type="text" id="act-desc" class="activity-input" placeholder="Beschreibung..." style="flex: 1;">
+                        <button class="btn-add" onclick="addActivity()"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <div class="activity-grid" id="activity-container"></div>
+            </div>
+
+            <div class="bento-card col-span-12">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-wallet"></i> Urlaubskasse</span>
+                    <span class="highlight-badge" id="settlement-badge">Ausgeglichen</span>
+                </div>
+
+                <div class="expense-stats">
+                    <div class="expense-stat-card">
+                        <label>Gesamt</label>
+                        <div class="val" id="stat-total">0,00 €</div>
+                    </div>
+                    <div class="expense-stat-card">
+                        <label>Philipp</label>
+                        <div class="val" id="stat-philipp">0,00 €</div>
+                    </div>
+                    <div class="expense-stat-card">
+                        <label>Laura</label>
+                        <div class="val" id="stat-laura">0,00 €</div>
+                    </div>
+                    <div class="expense-stat-card" style="background: var(--bg-color); border: 1px solid var(--border-color);">
+                        <label>Ausgleich</label>
+                        <div class="val" id="stat-settlement" style="font-size: 0.85rem; margin-top: 2px;">--</div>
+                    </div>
+                </div>
+
+                <div class="expense-input-group">
+                    <input type="text" id="exp-title" placeholder="Beschreibung (z.B. Einkauf)" style="flex: 2; min-width: 140px;">
+                    <input type="number" id="exp-amount" placeholder="Betrag (€)" step="0.01" style="flex: 1; min-width: 80px;">
+                    <select id="exp-payer" style="flex: 1; min-width: 110px;">
+                        <option value="Philipp">Philipp</option>
+                        <option value="Laura">Laura</option>
+                    </select>
+                    <button class="btn-add" onclick="addExpense()"><i class="fa-solid fa-plus"></i> Hinzufügen</button>
+                </div>
+
+                <ul class="expense-list" id="expense-list-container"></ul>
+            </div>
+
+        </div>
+
+        <!-- Versteckte Liebesnachricht am Ende -->
+        <div class="secret-love-container">
+            <span class="secret-love-hint">Mit viel Liebe gemacht für unseren Urlaub</span>
+            <div class="secret-love-message">Freu' mich ganz dolli auf die Zeit mit dir und Schnu <i class="fa-solid fa-heart" style="color: #ff84ad;"></i></div>
+        </div>
+    </div>
+
+    <div class="modal" id="syncModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="font-size: 1.05rem;"><i class="fa-solid fa-database"></i> Google Sheets</h3>
+                <button class="btn-close" onclick="closeSyncModal()">&times;</button>
+            </div>
+            <div>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
+                    Google Apps Script Web App URL einfügen:
+                </p>
+                <input type="text" id="sheet-url-input" class="modal-input" placeholder="https://script.google.com/.../exec">
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="btn-add" style="flex:1;" onclick="saveSyncSettings()">Speichern</button>
+                    <button class="btn-add" style="background: var(--text-muted); flex:1;" onclick="closeSyncModal()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let currentTab = 'philipp';
+        let sheetUrl = localStorage.getItem('google_sheet_url') || '';
+
+        function sanitizePackData(raw) {
+            const clean = { philipp: [], laura: [], gemeinsam: [] };
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clean;
+            ['philipp', 'laura', 'gemeinsam'].forEach(cat => {
+                if (Array.isArray(raw[cat])) {
+                    clean[cat] = raw[cat].filter(item => item && typeof item.text === 'string' && item.text.trim() !== '');
+                }
+            });
+            return clean;
+        }
+
+        let packData = sanitizePackData(JSON.parse(localStorage.getItem('utrecht_pack_data')));
+        let expenseData = JSON.parse(localStorage.getItem('utrecht_expense_data')) || [
+            { id: 1, title: 'Einkauf Albert Heijn', amount: 45.50, payer: 'Philipp' },
+            { id: 2, title: 'Zugtickets Utrecht', amount: 18.20, payer: 'Laura' }
+        ];
+        let activityData = JSON.parse(localStorage.getItem('utrecht_activity_data')) || [
+            { id: 1, title: 'Vredenburg Markt', category: 'Wochenmarkt', desc: 'Fr & Sa: Markt für frischen Käse & Stroopwafels.' },
+            { id: 2, title: 'Grachtenfahrt & Domturm', category: 'Utrecht', desc: 'Grachtentour und Blick vom Domturm.' },
+            { id: 3, title: 'Pyramide von Austerlitz', category: 'Natur', desc: 'Historisches Denkmal mitten im Wald.' },
+            { id: 4, title: 'Kasteel de Haar', category: 'Kultur', desc: 'Größtes Schloss der Niederlande.' }
+        ];
+
+        const mapPlaces = [
+            { name: "EuroParcs De Utrechtse Heuvelrug", cat: "Holiday Park (Unterkunft)", lat: 52.0620, lng: 5.3850 },
+            { name: "Titanic: An Immersive Voyage", cat: "History Museum (Utrecht)", lat: 52.0908, lng: 5.1222 },
+            { name: "De Haar Castle", cat: "Castle (Haarzuilens)", lat: 52.1214, lng: 4.9863 },
+            { name: "Parque West Climbing Parcour", cat: "Leisure Center", lat: 52.0886, lng: 5.0435 },
+            { name: "Play-in | The Wall Utrecht", cat: "Amusement Center", lat: 52.1030, lng: 5.0483 },
+            { name: "Hans & Gretel Pancake House", cat: "Crêperie / Restaurant", lat: 52.3323, lng: 5.5186 },
+            { name: "Geertjes Hoeve", cat: "Children's Farm", lat: 52.1293, lng: 4.9961 },
+            { name: "Alpaca Eco Farm", cat: "Recreation Center", lat: 52.1550, lng: 4.8810 },
+            { name: "Stichting De Ezelsociëteit", cat: "Animal Sanctuary (Zeist)", lat: 52.0298, lng: 5.3341 },
+            { name: "AKIBA District", cat: "Video Arcade (Utrecht)", lat: 52.0911, lng: 5.1147 },
+            { name: "Zaandam", cat: "Stadt / Ausflug", lat: 52.4420, lng: 4.8292 }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCountdown();
+            initMap();
+            if (sheetUrl) { loadFromGoogleSheets(); } 
+            else { renderPackList(); renderExpenses(); renderActivities(); }
+            updateSyncBadge();
+        });
+
+        function initCountdown() {
+            const targetDate = new Date('2026-09-17T16:00:00').getTime();
+            function update() {
+                const now = new Date().getTime();
+                const diff = targetDate - now;
+                if (diff <= 0) return;
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                document.getElementById('cd-days').innerText = days < 10 ? '0' + days : days;
+                document.getElementById('cd-hours').innerText = hours < 10 ? '0' + hours : hours;
+                document.getElementById('cd-mins').innerText = mins < 10 ? '0' + mins : mins;
+            }
+            update();
+            setInterval(update, 60000);
+        }
+
+        function initMap() {
+            const map = L.map('map').setView([52.10, 5.18], 10);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                subdomains: 'abcd',
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            mapPlaces.forEach(place => {
+                const navUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`;
+                const marker = L.marker([place.lat, place.lng]).addTo(map);
+                marker.bindPopup(`
+                    <div class="map-popup-title">${escapeHtml(place.name)}</div>
+                    <div class="map-popup-cat">${escapeHtml(place.cat)}</div>
+                    <a href="${navUrl}" target="_blank" class="map-popup-link"><i class="fa-solid fa-location-arrow"></i> Maps öffnen</a>
+                `);
+            });
+        }
+
+        function switchPackTab(tab, btnEl) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+            renderPackList();
+        }
+
+        function renderPackList() {
+            const container = document.getElementById('pack-list-container');
+            container.innerHTML = '';
+            if (!packData[currentTab]) packData[currentTab] = [];
+            packData[currentTab].forEach(item => {
+                const li = document.createElement('li');
+                li.className = `todo-item ${item.checked ? 'completed' : ''}`;
+                li.innerHTML = `
+                    <div class="todo-left">
+                        <input type="checkbox" class="todo-checkbox" ${item.checked ? 'checked' : ''} onchange="togglePackItem(${item.id})">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.text)}</span>
+                    </div>
+                    <button class="btn-delete" onclick="deletePackItem(${item.id})"><i class="fa-solid fa-trash"></i></button>
+                `;
+                container.appendChild(li);
+            });
+            saveData();
+            updatePackCounter();
+        }
+
+        function handlePackKeyPress(e) { if (e.key === 'Enter') addPackItem(); }
+
+        function addPackItem() {
+            const input = document.getElementById('pack-input');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!packData[currentTab]) packData[currentTab] = [];
+            packData[currentTab].push({ id: Date.now(), text: text, checked: false });
+            input.value = '';
+            renderPackList();
+        }
+
+        function togglePackItem(id) {
+            const item = packData[currentTab].find(i => i.id === id);
+            if (item) { item.checked = !item.checked; renderPackList(); }
+        }
+
+        function deletePackItem(id) {
+            packData[currentTab] = packData[currentTab].filter(i => i.id !== id);
+            renderPackList();
+        }
+
+        function updatePackCounter() {
+            let total = 0, checkedCount = 0;
+            Object.keys(packData).forEach(cat => {
+                if (Array.isArray(packData[cat])) {
+                    packData[cat].forEach(item => { total++; if (item.checked) checkedCount++; });
+                }
+            });
+            document.getElementById('pack-counter').innerText = `${checkedCount}/${total} abgehakt`;
+        }
+
+        function renderActivities() {
+            const container = document.getElementById('activity-container');
+            container.innerHTML = '';
+            activityData.forEach(act => {
+                const card = document.createElement('div');
+                card.className = 'activity-item';
+                card.innerHTML = `
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span class="activity-tag">${escapeHtml(act.category)}</span>
+                            <button class="btn-delete" onclick="deleteActivity(${act.id})"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div class="activity-title">${escapeHtml(act.title)}</div>
+                        <div class="activity-desc">${escapeHtml(act.desc)}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            saveData();
+        }
+
+        function addActivity() {
+            const title = document.getElementById('act-title').value.trim();
+            const category = document.getElementById('act-category').value.trim() || 'Ausflug';
+            const desc = document.getElementById('act-desc').value.trim();
+            if (!title) return;
+            activityData.unshift({ id: Date.now(), title, category, desc });
+            document.getElementById('act-title').value = '';
+            document.getElementById('act-category').value = '';
+            document.getElementById('act-desc').value = '';
+            renderActivities();
+        }
+
+        function deleteActivity(id) {
+            activityData = activityData.filter(a => a.id !== id);
+            renderActivities();
+        }
+
+        function renderExpenses() {
+            const container = document.getElementById('expense-list-container');
+            container.innerHTML = '';
+            let total = 0, sumPhilipp = 0, sumLaura = 0;
+
+            expenseData.forEach(exp => {
+                total += exp.amount;
+                if (exp.payer === 'Philipp') sumPhilipp += exp.amount;
+                if (exp.payer === 'Laura') sumLaura += exp.amount;
+
+                const li = document.createElement('li');
+                li.className = 'expense-item';
+                li.innerHTML = `
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <strong style="font-size: 0.85rem;">${escapeHtml(exp.title)}</strong>
+                        <span style="font-size: 0.72rem; color: var(--text-muted);">(${exp.payer})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                        <strong style="font-size: 0.85rem;">${exp.amount.toFixed(2).replace('.', ',')} €</strong>
+                        <button class="btn-delete" onclick="deleteExpense(${exp.id})"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                container.appendChild(li);
+            });
+
+            const diff = sumPhilipp - (total / 2);
+            document.getElementById('stat-total').innerText = total.toFixed(2).replace('.', ',') + ' €';
+            document.getElementById('stat-philipp').innerText = sumPhilipp.toFixed(2).replace('.', ',') + ' €';
+            document.getElementById('stat-laura').innerText = sumLaura.toFixed(2).replace('.', ',') + ' €';
+
+            const settlementEl = document.getElementById('stat-settlement');
+            const badgeEl = document.getElementById('settlement-badge');
+
+            if (Math.abs(diff) < 0.01) {
+                settlementEl.innerText = "0,00 €";
+                badgeEl.innerText = "Ausgeglichen";
+            } else if (diff > 0) {
+                settlementEl.innerText = `Laura➔Phil: ${diff.toFixed(2).replace('.', ',')} €`;
+                badgeEl.innerText = `Laura schuldet`;
+            } else {
+                settlementEl.innerText = `Phil➔Laura: ${Math.abs(diff).toFixed(2).replace('.', ',')} €`;
+                badgeEl.innerText = `Philipp schuldet`;
+            }
+            saveData();
+        }
+
+        function addExpense() {
+            const title = document.getElementById('exp-title').value.trim();
+            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const payer = document.getElementById('exp-payer').value;
+            if (!title || isNaN(amount) || amount <= 0) return;
+            expenseData.push({ id: Date.now(), title, amount, payer });
+            document.getElementById('exp-title').value = '';
+            document.getElementById('exp-amount').value = '';
+            renderExpenses();
+        }
+
+        function deleteExpense(id) {
+            expenseData = expenseData.filter(e => e.id !== id);
+            renderExpenses();
+        }
+
+        function saveData() {
+            localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
+            localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
+            localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
+            if (sheetUrl) syncToGoogleSheets();
+        }
+
+        function syncToGoogleSheets() {
+            if (!sheetUrl) return;
+            fetch(sheetUrl, {
+                method: 'POST', mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ packData, expenseData, activityData })
+            }).catch(err => console.error(err));
+        }
+
+        function loadFromGoogleSheets() {
+            if (!sheetUrl) return;
+            fetch(sheetUrl).then(res => res.json()).then(data => {
+                if (data && typeof data === 'object') {
+                    if (data.packData) packData = sanitizePackData(data.packData);
+                    if (data.expenseData) expenseData = data.expenseData;
+                    if (data.activityData) activityData = data.activityData;
+                    saveData();
+                }
+                renderPackList(); renderExpenses(); renderActivities();
+            }).catch(() => { renderPackList(); renderExpenses(); renderActivities(); });
+        }
+
+        function updateSyncBadge() {
+            const dot = document.getElementById('sync-dot-status');
+            const statusText = document.getElementById('sync-status-text');
+            if (sheetUrl) { dot.classList.remove('offline'); statusText.innerText = "Sheets Aktiv"; }
+            else { dot.classList.add('offline'); statusText.innerText = "Lokal"; }
+        }
+
+        function openSyncModal() {
+            document.getElementById('sheet-url-input').value = sheetUrl;
+            document.getElementById('syncModal').style.display = 'flex';
+        }
+
+        function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; }
+
+        function saveSyncSettings() {
+            sheetUrl = document.getElementById('sheet-url-input').value.trim();
+            localStorage.setItem('google_sheet_url', sheetUrl);
+            updateSyncBadge();
+            if (sheetUrl) loadFromGoogleSheets();
+            closeSyncModal();
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
