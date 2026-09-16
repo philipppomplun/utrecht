@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Utrecht Trip 2026 – EuroParcs De Utrechtse Heuvelrug</title>
+    <title>Urlaub 2026 – Utrechtse Heuvelrug</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -216,9 +216,9 @@
         }
 
         .detail-box { background-color: var(--accent-subtle); padding: 12px 14px; border-radius: var(--radius-md); }
-        .detail-box label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 3px; }
+        .detail-box label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 4px; }
         .detail-box .value { font-weight: 700; font-size: 0.88rem; color: var(--text-main); }
-        .detail-box .subvalue { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+        .detail-box .subvalue { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 
         .highlight-badge {
             display: inline-block;
@@ -440,7 +440,7 @@
             <div class="bento-card col-span-4">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-stopwatch"></i> Countdown</span>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Anreise 17.09.</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">17. bis 30. September</span>
                 </div>
                 <div class="countdown-container">
                     <div class="countdown-item"><span class="countdown-number" id="cd-days">--</span><span class="countdown-label">Tage</span></div>
@@ -475,9 +475,7 @@
                 </div>
                 <div class="link-buttons">
                     <a href="https://www.ns.nl/en" target="_blank" class="quick-link-btn"><i class="fa-solid fa-train"></i> NS Bahn NL</a>
-                    <a href="https://www.bahn.de" target="_blank" class="quick-link-btn"><i class="fa-solid fa-train-subway"></i> Deutsche Bahn</a>
                     <a href="https://www.europarcs.nl" target="_blank" class="quick-link-btn"><i class="fa-solid fa-house-user"></i> Mein EuroParcs</a>
-                    <a href="https://www.route.nl" target="_blank" class="quick-link-btn"><i class="fa-solid fa-map-location-dot"></i> Radrouten NL</a>
                 </div>
             </div>
 
@@ -690,7 +688,7 @@
         });
 
         function initCountdown() {
-            const targetDate = new Date('2026-09-17T16:00:00').getTime();
+            const targetDate = new Date('2026-09-30T10:00:00').getTime();
             function update() {
                 const now = new Date().getTime();
                 const diff = targetDate - now;
