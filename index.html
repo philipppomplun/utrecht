@@ -108,9 +108,8 @@
             height: 8px;
             background-color: #10B981;
             border-radius: 50%;
+            transition: background-color 0.3s ease;
         }
-
-        .sync-dot.offline { background-color: #F59E0B; }
 
         .bento-grid {
             display: grid;
@@ -365,7 +364,7 @@
             position: relative;
             margin-top: 24px;
             text-align: center;
-            padding: 12px 0 24px;
+            padding: 10px;
         }
 
         .secret-love-hint {
@@ -458,10 +457,10 @@
                 <h1><i class="fa-solid fa-compass"></i> Utrecht 2026</h1>
                 <p>EuroParcs De Utrechtse Heuvelrug • 17. Sep – 30. Sep 2026</p>
             </div>
-            <div class="sync-badge" onclick="openSyncModal()">
+            <div class="sync-badge" onclick="manualSync()">
                 <span class="sync-dot" id="sync-dot-status"></span>
                 <span id="sync-status-text">Google Sheets</span>
-                <i class="fa-solid fa-gear"></i>
+                <i class="fa-solid fa-rotate" id="sync-refresh-icon"></i>
             </div>
         </header>
 
@@ -564,7 +563,12 @@
             <div class="bento-card col-span-7">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-list-check"></i> Packlisten</span>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);" id="pack-counter">0 von 0 abgehakt</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="pack-counter">0 von 0 abgehakt</span>
+                        <button onclick="manualSync()" title="Jetzt mit Google Sheets abgleichen" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 2px 4px;">
+                            <i class="fa-solid fa-rotate" id="pack-refresh-icon"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="pack-tabs">
@@ -647,36 +651,33 @@
         </div>
     </div>
 
-    <div class="modal" id="syncModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 style="font-size: 1.05rem;"><i class="fa-solid fa-database"></i> Google Sheets</h3>
-                <button class="btn-close" onclick="closeSyncModal()">&times;</button>
-            </div>
-            <div>
-                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
-                    Google Sheets ist direkt im Code angebunden.
-                </p>
-                <input type="text" id="sheet-url-input" class="modal-input" readonly style="background: var(--bg-color); color: var(--text-muted);">
-                <div style="display: flex; gap: 8px; margin-top: 12px;">
-                    <button class="btn-add" style="background: var(--text-muted); width: 100%;" onclick="closeSyncModal()">Schließen</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         let currentTab = 'philipp';
         const sheetUrl = "https://script.google.com/macros/s/AKfycbz8BkM5ibVZn-IjUPNypkuDIHmNyriKkswPTWP4rRrCHYwtjnZXk_kvD-o3UrLyYsMnZg/exec";
 
+        function generateId() {
+            return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        }
+
         function sanitizePackData(raw) {
             const clean = { philipp: [], laura: [], schnuti: [], gemeinsam: [] };
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clean;
             ['philipp', 'laura', 'schnuti', 'gemeinsam'].forEach(cat => {
                 if (Array.isArray(raw[cat])) {
-                    clean[cat] = raw[cat].filter(item => item && typeof item.text === 'string' && item.text.trim() !== '');
+                    clean[cat] = raw[cat]
+                        .filter(item => item && (typeof item === 'string' || (typeof item.text === 'string' && item.text.trim() !== '')))
+                        .map(item => {
+                            if (typeof item === 'string') {
+                                return { id: generateId(), text: item, completed: false };
+                            }
+                            return {
+                                id: item.id || generateId(),
+                                text: item.text,
+                                completed: !!item.completed || !!item.checked
+                            };
+                        });
                 }
             });
             return clean;
@@ -711,8 +712,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             initCountdown();
             initMap();
-            loadFromGoogleSheets();
-            updateSyncBadge();
+            loadFromGoogleSheets(true);
+            
+            // Automatische Synchronisation im Hintergrund alle 5 Sekunden
+            setInterval(() => {
+                loadFromGoogleSheets(false);
+            }, 5000);
         });
 
         function initCountdown() {
@@ -763,15 +768,15 @@
             container.innerHTML = '';
             if (!packData[currentTab]) packData[currentTab] = [];
             
-            packData[currentTab].forEach((item, index) => {
+            packData[currentTab].forEach((item) => {
                 const li = document.createElement('li');
                 li.className = `todo-item ${item.completed ? 'completed' : ''}`;
                 li.innerHTML = `
                     <div class="todo-left">
-                        <input type="checkbox" class="todo-checkbox" ${item.completed ? 'checked' : ''} onchange="togglePackItem('${currentTab}', ${index})">
+                        <input type="checkbox" class="todo-checkbox" ${item.completed ? 'checked' : ''} onchange="togglePackItem('${currentTab}', '${item.id}')">
                         <span>${escapeHtml(item.text)}</span>
                     </div>
-                    <button class="btn-delete" onclick="deletePackItem('${currentTab}', ${index})"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="btn-delete" onclick="deletePackItem('${currentTab}', '${item.id}')"><i class="fa-solid fa-trash-can"></i></button>
                 `;
                 container.appendChild(li);
             });
@@ -783,7 +788,7 @@
             const text = input.value.trim();
             if (!text) return;
             if (!packData[currentTab]) packData[currentTab] = [];
-            packData[currentTab].push({ text, completed: false });
+            packData[currentTab].push({ id: generateId(), text: text, completed: false });
             input.value = '';
             saveAndRender();
         }
@@ -792,13 +797,16 @@
             if (e.key === 'Enter') addPackItem();
         }
 
-        function togglePackItem(tab, index) {
-            packData[tab][index].completed = !packData[tab][index].completed;
-            saveAndRender();
+        function togglePackItem(tab, itemId) {
+            const item = packData[tab].find(i => i.id === itemId);
+            if (item) {
+                item.completed = !item.completed;
+                saveAndRender();
+            }
         }
 
-        function deletePackItem(tab, index) {
-            packData[tab].splice(index, 1);
+        function deletePackItem(tab, itemId) {
+            packData[tab] = packData[tab].filter(i => i.id !== itemId);
             saveAndRender();
         }
 
@@ -818,7 +826,7 @@
             container.innerHTML = '';
             let total = 0, philippTotal = 0, lauraTotal = 0;
 
-            expenseData.forEach((exp, index) => {
+            expenseData.forEach((exp) => {
                 total += exp.amount;
                 if (exp.payer === 'Philipp') philippTotal += exp.amount;
                 else lauraTotal += exp.amount;
@@ -830,7 +838,7 @@
                         <strong>${escapeHtml(exp.title)}</strong><br>
                         <small style="color: var(--text-muted);">${exp.amount.toFixed(2)} € • Bezahlt von ${exp.payer}</small>
                     </div>
-                    <button class="btn-delete" onclick="deleteExpense(${index})"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="btn-delete" onclick="deleteExpense(${exp.id})"><i class="fa-solid fa-trash-can"></i></button>
                 `;
                 container.appendChild(li);
             });
@@ -872,22 +880,22 @@
             saveAndRender();
         }
 
-        function deleteExpense(index) {
-            expenseData.splice(index, 1);
+        function deleteExpense(expId) {
+            expenseData = expenseData.filter(e => e.id !== expId);
             saveAndRender();
         }
 
         function renderActivities() {
             const container = document.getElementById('activity-container');
             container.innerHTML = '';
-            activityData.forEach((act, index) => {
+            activityData.forEach((act) => {
                 const div = document.createElement('div');
                 div.className = 'activity-item';
                 div.innerHTML = `
                     <div>
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <span class="activity-tag">${escapeHtml(act.category)}</span>
-                            <button class="btn-delete" onclick="deleteActivity(${index})" style="font-size: 0.8rem;"><i class="fa-solid fa-trash-can"></i></button>
+                            <button class="btn-delete" onclick="deleteActivity(${act.id})" style="font-size: 0.8rem;"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                         <div class="activity-title">${escapeHtml(act.title)}</div>
                         <div class="activity-desc">${escapeHtml(act.desc)}</div>
@@ -915,8 +923,8 @@
             saveAndRender();
         }
 
-        function deleteActivity(index) {
-            activityData.splice(index, 1);
+        function deleteActivity(actId) {
+            activityData = activityData.filter(a => a.id !== actId);
             saveAndRender();
         }
 
@@ -930,35 +938,61 @@
             syncToGoogleSheets();
         }
 
-        function openSyncModal() {
-            document.getElementById('sheet-url-input').value = sheetUrl;
-            document.getElementById('syncModal').style.display = 'flex';
-        }
-
-        function closeSyncModal() {
-            document.getElementById('syncModal').style.display = 'none';
-        }
-
-        function updateSyncBadge() {
+        function updateSyncBadge(status = 'connected') {
             const dot = document.getElementById('sync-dot-status');
             const txt = document.getElementById('sync-status-text');
-            dot.classList.remove('offline');
-            txt.innerText = 'Verbunden';
+            const icon1 = document.getElementById('sync-refresh-icon');
+            const icon2 = document.getElementById('pack-refresh-icon');
+
+            if (status === 'syncing') {
+                dot.style.backgroundColor = '#3B82F6';
+                txt.innerText = 'Synchronisiere...';
+                if (icon1) icon1.classList.add('fa-spin');
+                if (icon2) icon2.classList.add('fa-spin');
+            } else if (status === 'error') {
+                dot.style.backgroundColor = '#EF4444';
+                txt.innerText = 'Fehler';
+                if (icon1) icon1.classList.remove('fa-spin');
+                if (icon2) icon2.classList.remove('fa-spin');
+            } else {
+                dot.style.backgroundColor = '#10B981';
+                txt.innerText = 'Verbunden';
+                if (icon1) icon1.classList.remove('fa-spin');
+                if (icon2) icon2.classList.remove('fa-spin');
+            }
+        }
+
+        function manualSync() {
+            loadFromGoogleSheets(true);
         }
 
         function syncToGoogleSheets() {
             if (!sheetUrl) return;
+            updateSyncBadge('syncing');
             const payload = { packData, expenseData, activityData };
             fetch(sheetUrl, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            }).catch(err => console.error('Sync error:', err));
+            }).then(() => {
+                setTimeout(() => updateSyncBadge('connected'), 1000);
+            }).catch(err => {
+                console.error('Sync error:', err);
+                updateSyncBadge('error');
+            });
         }
 
-        function loadFromGoogleSheets() {
+        function loadFromGoogleSheets(force = false) {
             if (!sheetUrl) return;
+
+            // Nicht im Hintergrund aktualisieren, wenn der Nutzer gerade etwas eintippt
+            const activeElem = document.activeElement;
+            if (!force && activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'SELECT')) {
+                return;
+            }
+
+            updateSyncBadge('syncing');
             fetch(sheetUrl)
                 .then(res => res.json())
                 .then(data => {
@@ -966,15 +1000,21 @@
                         if (data.packData) packData = sanitizePackData(data.packData);
                         if (data.expenseData) expenseData = data.expenseData;
                         if (data.activityData) activityData = data.activityData;
+                        
+                        localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
+                        localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
+                        localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
                     }
                     renderPackList();
                     renderExpenses();
                     renderActivities();
+                    updateSyncBadge('connected');
                 })
                 .catch(() => {
                     renderPackList();
                     renderExpenses();
                     renderActivities();
+                    updateSyncBadge('connected');
                 });
         }
 
