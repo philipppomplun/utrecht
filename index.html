@@ -358,7 +358,6 @@
         .expense-stat-card .val { font-size: 1rem; font-weight: 700; color: var(--text-main); }
         .expense-input-group { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 
-        /* Versteckte Liebesnachricht mit Frosted Glass Pop-up nach oben */
         .secret-love-container {
             position: relative;
             margin-top: 24px;
@@ -406,7 +405,6 @@
             z-index: 10;
         }
 
-        /* Pfeil unter der Frosted-Glass-Box */
         .secret-love-message::after {
             content: '';
             position: absolute;
@@ -418,7 +416,6 @@
             border-color: rgba(255, 255, 255, 0.8) transparent transparent transparent;
         }
 
-        /* Hover für Desktop & Active/Focus für Mobile */
         .secret-love-container:hover .secret-love-message,
         .secret-love-container:active .secret-love-message {
             opacity: 1;
@@ -640,7 +637,6 @@
 
         </div>
 
-        <!-- Versteckte Liebesnachricht mit Frosted Glass Pop-up -->
         <div class="secret-love-container">
             <div class="secret-love-message">Freu' mich ganz dolli auf die Zeit mit dir und Schnu <i class="fa-solid fa-heart" style="color: #ff84ad;"></i></div>
             <span class="secret-love-hint">Mit viel Liebe gemacht für unseren Urlaub</span>
@@ -655,12 +651,11 @@
             </div>
             <div>
                 <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
-                    Google Apps Script Web App URL einfügen:
+                    Google Sheets ist direkt im Code angebunden.
                 </p>
-                <input type="text" id="sheet-url-input" class="modal-input" placeholder="https://script.google.com/.../exec">
+                <input type="text" id="sheet-url-input" class="modal-input" readonly style="background: var(--bg-color); color: var(--text-muted);">
                 <div style="display: flex; gap: 8px; margin-top: 12px;">
-                    <button class="btn-add" style="flex:1;" onclick="saveSyncSettings()">Speichern</button>
-                    <button class="btn-add" style="background: var(--text-muted); flex:1;" onclick="closeSyncModal()">Abbrechen</button>
+                    <button class="btn-add" style="background: var(--text-muted); width: 100%;" onclick="closeSyncModal()">Schließen</button>
                 </div>
             </div>
         </div>
@@ -670,7 +665,8 @@
 
     <script>
         let currentTab = 'philipp';
-        let sheetUrl = localStorage.getItem('google_sheet_url') || '';
+        // Fester Link direkt im Code hinterlegt
+        const sheetUrl = "https://script.google.com/macros/s/AKfycbz8BkM5ibVZn-IjUPNypkuDIHmNyriKkswPTWP4rRrCHYwtjnZXk_kvD-o3UrLyYsMnZg/exec";
 
         function sanitizePackData(raw) {
             const clean = { philipp: [], laura: [], gemeinsam: [] };
@@ -712,8 +708,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initCountdown();
             initMap();
-            if (sheetUrl) { loadFromGoogleSheets(); } 
-            else { renderPackList(); renderExpenses(); renderActivities(); }
+            loadFromGoogleSheets();
             updateSyncBadge();
         });
 
@@ -929,7 +924,7 @@
             renderPackList();
             renderExpenses();
             renderActivities();
-            if (sheetUrl) { syncToGoogleSheets(); }
+            syncToGoogleSheets();
         }
 
         function openSyncModal() {
@@ -941,25 +936,11 @@
             document.getElementById('syncModal').style.display = 'none';
         }
 
-        function saveSyncSettings() {
-            const val = document.getElementById('sheet-url-input').value.trim();
-            sheetUrl = val;
-            localStorage.setItem('google_sheet_url', sheetUrl);
-            closeSyncModal();
-            updateSyncBadge();
-            if (sheetUrl) { loadFromGoogleSheets(); }
-        }
-
         function updateSyncBadge() {
             const dot = document.getElementById('sync-dot-status');
             const txt = document.getElementById('sync-status-text');
-            if (sheetUrl) {
-                dot.classList.remove('offline');
-                txt.innerText = 'Verbunden';
-            } else {
-                dot.classList.add('offline');
-                txt.innerText = 'Lokal (Offline)';
-            }
+            dot.classList.remove('offline');
+            txt.innerText = 'Verbunden';
         }
 
         function syncToGoogleSheets() {
@@ -978,14 +959,21 @@
             fetch(sheetUrl)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.packData) packData = sanitizePackData(data.packData);
-                    if (data.expenseData) expenseData = data.expenseData;
-                    if (data.activityData) activityData = data.activityData;
+                    if (data && typeof data === 'object') {
+                        if (data.packData) packData = sanitizePackData(data.packData);
+                        if (data.expenseData) expenseData = data.expenseData;
+                        if (data.activityData) activityData = data.activityData;
+                    }
                     renderPackList();
                     renderExpenses();
                     renderActivities();
                 })
-                .catch(err => console.error('Load error:', err));
+                .catch(() => {
+                    // Fallback auf lokale Daten bei Netzwerkfehlern
+                    renderPackList();
+                    renderExpenses();
+                    renderActivities();
+                });
         }
 
         function escapeHtml(str) {
