@@ -54,7 +54,6 @@
             align-items: center;
         }
 
-        /* HIER GEÄNDERT: max-width entfernt/auf 100% gesetzt, damit es über die volle Breite geht */
         .app-container {
             width: 100%;
             max-width: 100%;
@@ -337,7 +336,7 @@
         }
         .quick-link-btn i { color: var(--text-muted); }
 
-        .activity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; margin-top: 14px; }
+        .activity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; margin-top: 14px; max-height: 250px; overflow-y: auto; }
 
         .activity-item {
             background: var(--bg-color);
@@ -851,12 +850,15 @@
         function renderActivities() {
             const container = document.getElementById('activity-container');
             container.innerHTML = '';
-            activityData.forEach(act => {
+            activityData.forEach((act, index) => {
                 const div = document.createElement('div');
                 div.className = 'activity-item';
                 div.innerHTML = `
                     <div>
-                        <span class="activity-tag">${escapeHtml(act.category)}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span class="activity-tag">${escapeHtml(act.category)}</span>
+                            <button class="btn-delete" onclick="deleteActivity(${index})" style="font-size: 0.8rem;"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                         <div class="activity-title">${escapeHtml(act.title)}</div>
                         <div class="activity-desc">${escapeHtml(act.desc)}</div>
                     </div>
@@ -880,6 +882,11 @@
             titleInput.value = '';
             catInput.value = '';
             descInput.value = '';
+            saveAndRender();
+        }
+
+        function deleteActivity(index) {
+            activityData.splice(index, 1);
             saveAndRender();
         }
 
