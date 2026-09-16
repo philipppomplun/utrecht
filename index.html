@@ -54,9 +54,10 @@
             align-items: center;
         }
 
+        /* HIER GEÄNDERT: max-width entfernt/auf 100% gesetzt, damit es über die volle Breite geht */
         .app-container {
             width: 100%;
-            max-width: 1400px;
+            max-width: 100%;
             margin: 0 auto;
         }
 
@@ -358,7 +359,6 @@
         .expense-stat-card .val { font-size: 1rem; font-weight: 700; color: var(--text-main); }
         .expense-input-group { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 
-        /* Versteckte Liebesnachricht unten */
         .secret-love-container {
             margin-top: 16px;
             text-align: center;
@@ -610,7 +610,6 @@
 
         </div>
 
-        <!-- Versteckte Liebesnachricht am Ende -->
         <div class="secret-love-container">
             <span class="secret-love-hint">Mit viel Liebe gemacht für unseren Urlaub</span>
             <div class="secret-love-message">Freu' mich ganz dolli auf die Zeit mit dir und Schnu <i class="fa-solid fa-heart" style="color: #ff84ad;"></i></div>
@@ -734,188 +733,164 @@
             const container = document.getElementById('pack-list-container');
             container.innerHTML = '';
             if (!packData[currentTab]) packData[currentTab] = [];
-            packData[currentTab].forEach(item => {
+            
+            packData[currentTab].forEach((item, index) => {
                 const li = document.createElement('li');
-                li.className = `todo-item ${item.checked ? 'completed' : ''}`;
+                li.className = `todo-item ${item.completed ? 'completed' : ''}`;
                 li.innerHTML = `
                     <div class="todo-left">
-                        <input type="checkbox" class="todo-checkbox" ${item.checked ? 'checked' : ''} onchange="togglePackItem(${item.id})">
-                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.text)}</span>
+                        <input type="checkbox" class="todo-checkbox" ${item.completed ? 'checked' : ''} onchange="togglePackItem('${currentTab}', ${index})">
+                        <span>${escapeHtml(item.text)}</span>
                     </div>
-                    <button class="btn-delete" onclick="deletePackItem(${item.id})"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn-delete" onclick="deletePackItem('${currentTab}', ${index})"><i class="fa-solid fa-trash-can"></i></button>
                 `;
                 container.appendChild(li);
             });
-            saveData();
             updatePackCounter();
         }
-
-        function handlePackKeyPress(e) { if (e.key === 'Enter') addPackItem(); }
 
         function addPackItem() {
             const input = document.getElementById('pack-input');
             const text = input.value.trim();
             if (!text) return;
             if (!packData[currentTab]) packData[currentTab] = [];
-            packData[currentTab].push({ id: Date.now(), text: text, checked: false });
+            packData[currentTab].push({ text, completed: false });
             input.value = '';
-            renderPackList();
+            saveAndRender();
         }
 
-        function togglePackItem(id) {
-            const item = packData[currentTab].find(i => i.id === id);
-            if (item) { item.checked = !item.checked; renderPackList(); }
+        function handlePackKeyPress(e) {
+            if (e.key === 'Enter') addPackItem();
         }
 
-        function deletePackItem(id) {
-            packData[currentTab] = packData[currentTab].filter(i => i.id !== id);
-            renderPackList();
+        function togglePackItem(tab, index) {
+            packData[tab][index].completed = !packData[tab][index].completed;
+            saveAndRender();
+        }
+
+        function deletePackItem(tab, index) {
+            packData[tab].splice(index, 1);
+            saveAndRender();
         }
 
         function updatePackCounter() {
-            let total = 0, checkedCount = 0;
-            Object.keys(packData).forEach(cat => {
-                if (Array.isArray(packData[cat])) {
-                    packData[cat].forEach(item => { total++; if (item.checked) checkedCount++; });
+            let total = 0, completed = 0;
+            ['philipp', 'laura', 'gemeinsam'].forEach(cat => {
+                if (packData[cat]) {
+                    total += packData[cat].length;
+                    completed += packData[cat].filter(i => i.completed).length;
                 }
             });
-            document.getElementById('pack-counter').innerText = `${checkedCount}/${total} abgehakt`;
+            document.getElementById('pack-counter').innerText = `${completed} von ${total} abgehakt`;
+        }
+
+        function renderExpenses() {
+            const container = document.getElementById('expense-list-container');
+            container.innerHTML = '';
+            let total = 0, philippTotal = 0, lauraTotal = 0;
+
+            expenseData.forEach((exp, index) => {
+                total += exp.amount;
+                if (exp.payer === 'Philipp') philippTotal += exp.amount;
+                else lauraTotal += exp.amount;
+
+                const li = document.createElement('li');
+                li.className = 'expense-item';
+                li.innerHTML = `
+                    <div>
+                        <strong>${escapeHtml(exp.title)}</strong><br>
+                        <small style="color: var(--text-muted);">${exp.amount.toFixed(2)} € • Bezahlt von ${exp.payer}</small>
+                    </div>
+                    <button class="btn-delete" onclick="deleteExpense(${index})"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                container.appendChild(li);
+            });
+
+            document.getElementById('stat-total').innerText = total.toFixed(2) + ' €';
+            document.getElementById('stat-philipp').innerText = philippTotal.toFixed(2) + ' €';
+            document.getElementById('stat-laura').innerText = lauraTotal.toFixed(2) + ' €';
+
+            const diff = philippTotal - lauraTotal;
+            const settlementEl = document.getElementById('stat-settlement');
+            const badgeEl = document.getElementById('settlement-badge');
+
+            if (Math.abs(diff) < 0.01) {
+                settlementEl.innerText = 'Ausgeglichen';
+                badgeEl.innerText = 'Ausgeglichen';
+            } else if (diff > 0) {
+                settlementEl.innerText = `Laura schuldet Philipp ${(diff / 2).toFixed(2)} €`;
+                badgeEl.innerText = 'Offen';
+            } else {
+                settlementEl.innerText = `Philipp schuldet Laura ${(Math.abs(diff) / 2).toFixed(2)} €`;
+                badgeEl.innerText = 'Offen';
+            }
+        }
+
+        function addExpense() {
+            const titleInput = document.getElementById('exp-title');
+            const amountInput = document.getElementById('exp-amount');
+            const payerSelect = document.getElementById('exp-payer');
+
+            const title = titleInput.value.trim();
+            const amount = parseFloat(amountInput.value);
+            const payer = payerSelect.value;
+
+            if (!title || isNaN(amount) || amount <= 0) return;
+
+            expenseData.push({ id: Date.now(), title, amount, payer });
+            titleInput.value = '';
+            amountInput.value = '';
+            saveAndRender();
+        }
+
+        function deleteExpense(index) {
+            expenseData.splice(index, 1);
+            saveAndRender();
         }
 
         function renderActivities() {
             const container = document.getElementById('activity-container');
             container.innerHTML = '';
             activityData.forEach(act => {
-                const card = document.createElement('div');
-                card.className = 'activity-item';
-                card.innerHTML = `
+                const div = document.createElement('div');
+                div.className = 'activity-item';
+                div.innerHTML = `
                     <div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span class="activity-tag">${escapeHtml(act.category)}</span>
-                            <button class="btn-delete" onclick="deleteActivity(${act.id})"><i class="fa-solid fa-trash"></i></button>
-                        </div>
+                        <span class="activity-tag">${escapeHtml(act.category)}</span>
                         <div class="activity-title">${escapeHtml(act.title)}</div>
                         <div class="activity-desc">${escapeHtml(act.desc)}</div>
                     </div>
                 `;
-                container.appendChild(card);
+                container.appendChild(div);
             });
-            saveData();
         }
 
         function addActivity() {
-            const title = document.getElementById('act-title').value.trim();
-            const category = document.getElementById('act-category').value.trim() || 'Ausflug';
-            const desc = document.getElementById('act-desc').value.trim();
+            const titleInput = document.getElementById('act-title');
+            const catInput = document.getElementById('act-category');
+            const descInput = document.getElementById('act-desc');
+
+            const title = titleInput.value.trim();
+            const category = catInput.value.trim() || 'Ausflug';
+            const desc = descInput.value.trim();
+
             if (!title) return;
-            activityData.unshift({ id: Date.now(), title, category, desc });
-            document.getElementById('act-title').value = '';
-            document.getElementById('act-category').value = '';
-            document.getElementById('act-desc').value = '';
-            renderActivities();
+
+            activityData.push({ id: Date.now(), title, category, desc });
+            titleInput.value = '';
+            catInput.value = '';
+            descInput.value = '';
+            saveAndRender();
         }
 
-        function deleteActivity(id) {
-            activityData = activityData.filter(a => a.id !== id);
-            renderActivities();
-        }
-
-        function renderExpenses() {
-            const container = document.getElementById('expense-list-container');
-            container.innerHTML = '';
-            let total = 0, sumPhilipp = 0, sumLaura = 0;
-
-            expenseData.forEach(exp => {
-                total += exp.amount;
-                if (exp.payer === 'Philipp') sumPhilipp += exp.amount;
-                if (exp.payer === 'Laura') sumLaura += exp.amount;
-
-                const li = document.createElement('li');
-                li.className = 'expense-item';
-                li.innerHTML = `
-                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        <strong style="font-size: 0.85rem;">${escapeHtml(exp.title)}</strong>
-                        <span style="font-size: 0.72rem; color: var(--text-muted);">(${exp.payer})</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                        <strong style="font-size: 0.85rem;">${exp.amount.toFixed(2).replace('.', ',')} €</strong>
-                        <button class="btn-delete" onclick="deleteExpense(${exp.id})"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                `;
-                container.appendChild(li);
-            });
-
-            const diff = sumPhilipp - (total / 2);
-            document.getElementById('stat-total').innerText = total.toFixed(2).replace('.', ',') + ' €';
-            document.getElementById('stat-philipp').innerText = sumPhilipp.toFixed(2).replace('.', ',') + ' €';
-            document.getElementById('stat-laura').innerText = sumLaura.toFixed(2).replace('.', ',') + ' €';
-
-            const settlementEl = document.getElementById('stat-settlement');
-            const badgeEl = document.getElementById('settlement-badge');
-
-            if (Math.abs(diff) < 0.01) {
-                settlementEl.innerText = "0,00 €";
-                badgeEl.innerText = "Ausgeglichen";
-            } else if (diff > 0) {
-                settlementEl.innerText = `Laura➔Phil: ${diff.toFixed(2).replace('.', ',')} €`;
-                badgeEl.innerText = `Laura schuldet`;
-            } else {
-                settlementEl.innerText = `Phil➔Laura: ${Math.abs(diff).toFixed(2).replace('.', ',')} €`;
-                badgeEl.innerText = `Philipp schuldet`;
-            }
-            saveData();
-        }
-
-        function addExpense() {
-            const title = document.getElementById('exp-title').value.trim();
-            const amount = parseFloat(document.getElementById('exp-amount').value);
-            const payer = document.getElementById('exp-payer').value;
-            if (!title || isNaN(amount) || amount <= 0) return;
-            expenseData.push({ id: Date.now(), title, amount, payer });
-            document.getElementById('exp-title').value = '';
-            document.getElementById('exp-amount').value = '';
-            renderExpenses();
-        }
-
-        function deleteExpense(id) {
-            expenseData = expenseData.filter(e => e.id !== id);
-            renderExpenses();
-        }
-
-        function saveData() {
+        function saveAndRender() {
             localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
             localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
             localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
-            if (sheetUrl) syncToGoogleSheets();
-        }
-
-        function syncToGoogleSheets() {
-            if (!sheetUrl) return;
-            fetch(sheetUrl, {
-                method: 'POST', mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ packData, expenseData, activityData })
-            }).catch(err => console.error(err));
-        }
-
-        function loadFromGoogleSheets() {
-            if (!sheetUrl) return;
-            fetch(sheetUrl).then(res => res.json()).then(data => {
-                if (data && typeof data === 'object') {
-                    if (data.packData) packData = sanitizePackData(data.packData);
-                    if (data.expenseData) expenseData = data.expenseData;
-                    if (data.activityData) activityData = data.activityData;
-                    saveData();
-                }
-                renderPackList(); renderExpenses(); renderActivities();
-            }).catch(() => { renderPackList(); renderExpenses(); renderActivities(); });
-        }
-
-        function updateSyncBadge() {
-            const dot = document.getElementById('sync-dot-status');
-            const statusText = document.getElementById('sync-status-text');
-            if (sheetUrl) { dot.classList.remove('offline'); statusText.innerText = "Sheets Aktiv"; }
-            else { dot.classList.add('offline'); statusText.innerText = "Lokal"; }
+            renderPackList();
+            renderExpenses();
+            renderActivities();
+            if (sheetUrl) { syncToGoogleSheets(); }
         }
 
         function openSyncModal() {
@@ -923,18 +898,64 @@
             document.getElementById('syncModal').style.display = 'flex';
         }
 
-        function closeSyncModal() { document.getElementById('syncModal').style.display = 'none'; }
-
-        function saveSyncSettings() {
-            sheetUrl = document.getElementById('sheet-url-input').value.trim();
-            localStorage.setItem('google_sheet_url', sheetUrl);
-            updateSyncBadge();
-            if (sheetUrl) loadFromGoogleSheets();
-            closeSyncModal();
+        function closeSyncModal() {
+            document.getElementById('syncModal').style.display = 'none';
         }
 
-        function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        function saveSyncSettings() {
+            const val = document.getElementById('sheet-url-input').value.trim();
+            sheetUrl = val;
+            localStorage.setItem('google_sheet_url', sheetUrl);
+            closeSyncModal();
+            updateSyncBadge();
+            if (sheetUrl) { loadFromGoogleSheets(); }
+        }
+
+        function updateSyncBadge() {
+            const dot = document.getElementById('sync-dot-status');
+            const txt = document.getElementById('sync-status-text');
+            if (sheetUrl) {
+                dot.classList.remove('offline');
+                txt.innerText = 'Verbunden';
+            } else {
+                dot.classList.add('offline');
+                txt.innerText = 'Lokal (Offline)';
+            }
+        }
+
+        function syncToGoogleSheets() {
+            if (!sheetUrl) return;
+            const payload = { packData, expenseData, activityData };
+            fetch(sheetUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.error('Sync error:', err));
+        }
+
+        function loadFromGoogleSheets() {
+            if (!sheetUrl) return;
+            fetch(sheetUrl)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.packData) packData = sanitizePackData(data.packData);
+                    if (data.expenseData) expenseData = data.expenseData;
+                    if (data.activityData) activityData = data.activityData;
+                    renderPackList();
+                    renderExpenses();
+                    renderActivities();
+                })
+                .catch(err => console.error('Load error:', err));
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
     </script>
 </body>
