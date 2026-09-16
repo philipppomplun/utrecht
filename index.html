@@ -252,18 +252,21 @@
             padding: 3px;
             border-radius: var(--radius-md);
             margin-bottom: 14px;
+            flex-wrap: wrap;
         }
 
         .tab-btn {
             flex: 1;
-            padding: 8px;
+            min-width: 70px;
+            padding: 8px 6px;
             border: none;
             background: transparent;
             border-radius: var(--radius-sm);
             font-weight: 600;
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
             cursor: pointer;
+            text-align: center;
         }
 
         .tab-btn.active { background: white; color: var(--text-main); box-shadow: var(--shadow-sm); }
@@ -567,6 +570,7 @@
                 <div class="pack-tabs">
                     <button class="tab-btn active" onclick="switchPackTab('philipp', this)">Philipp</button>
                     <button class="tab-btn" onclick="switchPackTab('laura', this)">Laura</button>
+                    <button class="tab-btn" onclick="switchPackTab('schnuti', this)">Schnuti</button>
                     <button class="tab-btn" onclick="switchPackTab('gemeinsam', this)">Gemeinsam</button>
                 </div>
 
@@ -665,13 +669,12 @@
 
     <script>
         let currentTab = 'philipp';
-        // Fester Link direkt im Code hinterlegt
         const sheetUrl = "https://script.google.com/macros/s/AKfycbz8BkM5ibVZn-IjUPNypkuDIHmNyriKkswPTWP4rRrCHYwtjnZXk_kvD-o3UrLyYsMnZg/exec";
 
         function sanitizePackData(raw) {
-            const clean = { philipp: [], laura: [], gemeinsam: [] };
+            const clean = { philipp: [], laura: [], schnuti: [], gemeinsam: [] };
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clean;
-            ['philipp', 'laura', 'gemeinsam'].forEach(cat => {
+            ['philipp', 'laura', 'schnuti', 'gemeinsam'].forEach(cat => {
                 if (Array.isArray(raw[cat])) {
                     clean[cat] = raw[cat].filter(item => item && typeof item.text === 'string' && item.text.trim() !== '');
                 }
@@ -801,7 +804,7 @@
 
         function updatePackCounter() {
             let total = 0, completed = 0;
-            ['philipp', 'laura', 'gemeinsam'].forEach(cat => {
+            ['philipp', 'laura', 'schnuti', 'gemeinsam'].forEach(cat => {
                 if (packData[cat]) {
                     total += packData[cat].length;
                     completed += packData[cat].filter(i => i.completed).length;
@@ -969,7 +972,6 @@
                     renderActivities();
                 })
                 .catch(() => {
-                    // Fallback auf lokale Daten bei Netzwerkfehlern
                     renderPackList();
                     renderExpenses();
                     renderActivities();
