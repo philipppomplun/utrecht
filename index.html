@@ -270,14 +270,14 @@
 
         .tab-btn.active { background: white; color: var(--text-main); box-shadow: var(--shadow-sm); }
 
-        .pack-input-group, .expense-input-group {
+        .pack-input-group, .expense-input-group, .schedule-input-group {
             display: flex;
             gap: 8px;
             margin-bottom: 14px;
             width: 100%;
         }
 
-        .pack-input-group input, .activity-input, .expense-input-group input, .expense-input-group select, .modal-input {
+        .pack-input-group input, .activity-input, .expense-input-group input, .expense-input-group select, .modal-input, .schedule-input-group input {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
@@ -285,6 +285,11 @@
             outline: none;
             font-size: 0.85rem;
             background: white;
+            transition: var(--transition);
+        }
+
+        .pack-input-group input:focus, .activity-input:focus, .expense-input-group input:focus, .schedule-input-group input:focus {
+            border-color: var(--accent-dark);
         }
 
         .pack-input-group input { flex: 1; }
@@ -360,6 +365,94 @@
         .expense-stat-card .val { font-size: 1rem; font-weight: 700; color: var(--text-main); }
         .expense-input-group { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 
+        /* HORIZONTALE TAG-CHIPS & TAGESPLANUNG STYLES */
+        .day-chips-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+
+        .day-chip {
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            background: var(--accent-subtle);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .day-chip:hover {
+            border-color: var(--border-hover);
+            color: var(--text-main);
+        }
+
+        .day-chip.active {
+            background: var(--accent-dark);
+            color: white;
+            border-color: var(--accent-dark);
+        }
+
+        .schedule-events-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .schedule-event-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-color);
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            gap: 12px;
+        }
+
+        .event-time-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: var(--accent-subtle);
+            color: var(--text-main);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .event-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .event-title {
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: var(--text-main);
+        }
+
+        .event-location-tag {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         .secret-love-container {
             position: relative;
             margin-top: 24px;
@@ -424,29 +517,6 @@
             transform: translateX(-50%) translateY(0) scale(1);
             pointer-events: auto;
         }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.4);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 24px;
-            border-radius: var(--radius-lg);
-            max-width: 450px;
-            width: 90%;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .btn-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -552,6 +622,28 @@
                 </ul>
             </div>
 
+            <!-- TAGESPLANUNG MIT CHIPS/TABS UND DETAILS -->
+            <div class="bento-card col-span-12">
+                <div class="card-header">
+                    <span class="card-title"><i class="fa-solid fa-calendar-days"></i> Grobe Tagesplanung</span>
+                    <span class="highlight-badge" id="schedule-active-date-label">Do, 17.09.</span>
+                </div>
+
+                <!-- Horizontale Tages-Chips -->
+                <div class="day-chips-scroll" id="day-chips-container"></div>
+
+                <!-- Eingabeformular für die Unternehmung -->
+                <div class="schedule-input-group">
+                    <input type="text" id="sched-time" placeholder="Uhrzeit (z.B. 10:00)" style="flex: 1; min-width: 110px;">
+                    <input type="text" id="sched-title" placeholder="Unternehmung..." style="flex: 2; min-width: 150px;" onkeypress="handleScheduleKeyPress(event)">
+                    <input type="text" id="sched-location" placeholder="Ort (optional)..." style="flex: 1.5; min-width: 130px;" onkeypress="handleScheduleKeyPress(event)">
+                    <button class="btn-add" onclick="addScheduleEvent()"><i class="fa-solid fa-plus"></i> Hinzufügen</button>
+                </div>
+
+                <!-- Unternehmungen des ausgewählten Tages -->
+                <div class="schedule-events-container" id="schedule-events-container"></div>
+            </div>
+
             <div class="bento-card col-span-12">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-map-location-dot"></i> Eure Wunschorte</span>
@@ -655,11 +747,29 @@
 
     <script>
         let currentTab = 'philipp';
+        let currentScheduleDay = '2026-09-17';
         const sheetUrl = "https://script.google.com/macros/s/AKfycbz8BkM5ibVZn-IjUPNypkuDIHmNyriKkswPTWP4rRrCHYwtjnZXk_kvD-o3UrLyYsMnZg/exec";
 
         function generateId() {
             return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
         }
+
+        const tripDays = [
+            { date: '2026-09-17', label: 'Do, 17.09.' },
+            { date: '2026-09-18', label: 'Fr, 18.09.' },
+            { date: '2026-09-19', label: 'Sa, 19.09.' },
+            { date: '2026-09-20', label: 'So, 20.09.' },
+            { date: '2026-09-21', label: 'Mo, 21.09.' },
+            { date: '2026-09-22', label: 'Di, 22.09.' },
+            { date: '2026-09-23', label: 'Mi, 23.09.' },
+            { date: '2026-09-24', label: 'Do, 24.09.' },
+            { date: '2026-09-25', label: 'Fr, 25.09.' },
+            { date: '2026-09-26', label: 'Sa, 26.09.' },
+            { date: '2026-09-27', label: 'So, 27.09.' },
+            { date: '2026-09-28', label: 'Mo, 28.09.' },
+            { date: '2026-09-29', label: 'Di, 29.09.' },
+            { date: '2026-09-30', label: 'Mi, 30.09.' }
+        ];
 
         function sanitizePackData(raw) {
             const clean = { philipp: [], laura: [], schnuti: [], gemeinsam: [] };
@@ -683,7 +793,35 @@
             return clean;
         }
 
+        function sanitizeScheduleData(raw) {
+            const clean = {};
+            tripDays.forEach(day => { clean[day.date] = []; });
+
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return clean;
+
+            tripDays.forEach(day => {
+                const val = raw[day.date];
+                if (Array.isArray(val)) {
+                    clean[day.date] = val.map(item => ({
+                        id: item.id || generateId(),
+                        time: item.time || '',
+                        title: item.title || item.text || '',
+                        location: item.location || ''
+                    })).filter(i => i.title.trim() !== '');
+                } else if (typeof val === 'string' && val.trim() !== '') {
+                    clean[day.date] = [{
+                        id: generateId(),
+                        time: 'Ganztägig',
+                        title: val,
+                        location: ''
+                    }];
+                }
+            });
+            return clean;
+        }
+
         let packData = sanitizePackData(JSON.parse(localStorage.getItem('utrecht_pack_data')));
+        let scheduleData = sanitizeScheduleData(JSON.parse(localStorage.getItem('utrecht_schedule_data')));
         let expenseData = JSON.parse(localStorage.getItem('utrecht_expense_data')) || [
             { id: 1, title: 'Einkauf Albert Heijn', amount: 45.50, payer: 'Philipp' },
             { id: 2, title: 'Zugtickets Utrecht', amount: 18.20, payer: 'Laura' }
@@ -712,9 +850,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             initCountdown();
             initMap();
+            renderSchedule();
+            renderPackList();
+            renderExpenses();
+            renderActivities();
             loadFromGoogleSheets(true);
             
-            // Automatische Synchronisation im Hintergrund alle 5 Sekunden
             setInterval(() => {
                 loadFromGoogleSheets(false);
             }, 5000);
@@ -754,6 +895,93 @@
                     <a href="${navUrl}" target="_blank" class="map-popup-link"><i class="fa-solid fa-location-arrow"></i> Maps öffnen</a>
                 `);
             });
+        }
+
+        /* RENDERING DER TAGESPLANUNG (CHIPS & EVENTS) */
+        function renderSchedule() {
+            const chipsContainer = document.getElementById('day-chips-container');
+            chipsContainer.innerHTML = '';
+
+            tripDays.forEach(day => {
+                const hasEvents = scheduleData[day.date] && scheduleData[day.date].length > 0;
+                const chip = document.createElement('div');
+                chip.className = `day-chip ${day.date === currentScheduleDay ? 'active' : ''}`;
+                chip.innerHTML = `${day.label} ${hasEvents ? '•' : ''}`;
+                chip.onclick = () => switchScheduleDay(day.date);
+                chipsContainer.appendChild(chip);
+            });
+
+            const activeDayObj = tripDays.find(d => d.date === currentScheduleDay);
+            document.getElementById('schedule-active-date-label').innerText = activeDayObj ? activeDayObj.label : currentScheduleDay;
+
+            const eventsContainer = document.getElementById('schedule-events-container');
+            eventsContainer.innerHTML = '';
+
+            const currentEvents = scheduleData[currentScheduleDay] || [];
+
+            if (currentEvents.length === 0) {
+                eventsContainer.innerHTML = `<div style="text-align: center; color: var(--text-light); font-size: 0.82rem; padding: 16px 0;">Noch keine Unternehmungen für diesen Tag eingetragen.</div>`;
+                return;
+            }
+
+            currentEvents.forEach(evt => {
+                const card = document.createElement('div');
+                card.className = 'schedule-event-card';
+                card.innerHTML = `
+                    <div class="event-content">
+                        ${evt.time ? `<span class="event-time-badge"><i class="fa-regular fa-clock"></i> ${escapeHtml(evt.time)}</span>` : ''}
+                        <span class="event-title">${escapeHtml(evt.title)}</span>
+                        ${evt.location ? `<span class="event-location-tag"><i class="fa-solid fa-location-dot"></i> ${escapeHtml(evt.location)}</span>` : ''}
+                    </div>
+                    <button class="btn-delete" onclick="deleteScheduleEvent('${evt.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                eventsContainer.appendChild(card);
+            });
+        }
+
+        function switchScheduleDay(dateStr) {
+            currentScheduleDay = dateStr;
+            renderSchedule();
+        }
+
+        function addScheduleEvent() {
+            const timeInput = document.getElementById('sched-time');
+            const titleInput = document.getElementById('sched-title');
+            const locInput = document.getElementById('sched-location');
+
+            const time = timeInput.value.trim();
+            const title = titleInput.value.trim();
+            const location = locInput.value.trim();
+
+            if (!title) return;
+
+            if (!scheduleData[currentScheduleDay]) {
+                scheduleData[currentScheduleDay] = [];
+            }
+
+            scheduleData[currentScheduleDay].push({
+                id: generateId(),
+                time: time,
+                title: title,
+                location: location
+            });
+
+            timeInput.value = '';
+            titleInput.value = '';
+            locInput.value = '';
+
+            saveAndRender();
+        }
+
+        function handleScheduleKeyPress(e) {
+            if (e.key === 'Enter') addScheduleEvent();
+        }
+
+        function deleteScheduleEvent(eventId) {
+            if (scheduleData[currentScheduleDay]) {
+                scheduleData[currentScheduleDay] = scheduleData[currentScheduleDay].filter(e => e.id !== eventId);
+                saveAndRender();
+            }
         }
 
         function switchPackTab(tab, btnEl) {
@@ -930,8 +1158,10 @@
 
         function saveAndRender() {
             localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
+            localStorage.setItem('utrecht_schedule_data', JSON.stringify(scheduleData));
             localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
             localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
+            renderSchedule();
             renderPackList();
             renderExpenses();
             renderActivities();
@@ -969,7 +1199,7 @@
         function syncToGoogleSheets() {
             if (!sheetUrl) return;
             updateSyncBadge('syncing');
-            const payload = { packData, expenseData, activityData };
+            const payload = { packData, scheduleData, expenseData, activityData };
             fetch(sheetUrl, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -986,7 +1216,6 @@
         function loadFromGoogleSheets(force = false) {
             if (!sheetUrl) return;
 
-            // Nicht im Hintergrund aktualisieren, wenn der Nutzer gerade etwas eintippt
             const activeElem = document.activeElement;
             if (!force && activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'SELECT')) {
                 return;
@@ -998,19 +1227,23 @@
                 .then(data => {
                     if (data && typeof data === 'object') {
                         if (data.packData) packData = sanitizePackData(data.packData);
+                        if (data.scheduleData) scheduleData = sanitizeScheduleData(data.scheduleData);
                         if (data.expenseData) expenseData = data.expenseData;
                         if (data.activityData) activityData = data.activityData;
                         
                         localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
+                        localStorage.setItem('utrecht_schedule_data', JSON.stringify(scheduleData));
                         localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
                         localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
                     }
+                    renderSchedule();
                     renderPackList();
                     renderExpenses();
                     renderActivities();
                     updateSyncBadge('connected');
                 })
                 .catch(() => {
+                    renderSchedule();
                     renderPackList();
                     renderExpenses();
                     renderActivities();
