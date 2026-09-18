@@ -277,7 +277,7 @@
             width: 100%;
         }
 
-        .pack-input-group input, .activity-input, .expense-input-group input, .expense-input-group select, .modal-input, .schedule-input-group input {
+        .pack-input-group input, .expense-input-group input, .expense-input-group select, .schedule-input-group input {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
@@ -288,7 +288,7 @@
             transition: var(--transition);
         }
 
-        .pack-input-group input:focus, .activity-input:focus, .expense-input-group input:focus, .schedule-input-group input:focus {
+        .pack-input-group input:focus, .expense-input-group input:focus, .schedule-input-group input:focus {
             border-color: var(--accent-dark);
         }
 
@@ -342,22 +342,6 @@
             border: 1px solid var(--border-color);
         }
         .quick-link-btn i { color: var(--text-muted); }
-
-        .activity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; width: 100%; margin-top: 14px; max-height: 250px; overflow-y: auto; }
-
-        .activity-item {
-            background: var(--bg-color);
-            border-radius: var(--radius-md);
-            padding: 12px;
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .activity-tag { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; background: var(--accent-subtle); color: var(--text-muted); display: inline-block; }
-        .activity-title { font-weight: 700; font-size: 0.85rem; margin: 4px 0 2px 0; color: var(--text-main); }
-        .activity-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; }
 
         .expense-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px; }
         .expense-stat-card { background: var(--accent-subtle); padding: 10px 12px; border-radius: var(--radius-md); }
@@ -652,7 +636,7 @@
                 <div id="map"></div>
             </div>
 
-            <div class="bento-card col-span-7">
+            <div class="bento-card col-span-12">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-list-check"></i> Packlisten</span>
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -676,25 +660,6 @@
                 </div>
 
                 <ul class="todo-list" id="pack-list-container"></ul>
-            </div>
-
-            <div class="bento-card col-span-5">
-                <div class="card-header">
-                    <span class="card-title"><i class="fa-solid fa-compass"></i> Ausflugsideen</span>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                        <input type="text" id="act-title" class="activity-input" placeholder="Titel (z.B. Domturm)" style="flex: 2;">
-                        <input type="text" id="act-category" class="activity-input" placeholder="Kategorie" style="flex: 1;">
-                    </div>
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                        <input type="text" id="act-desc" class="activity-input" placeholder="Beschreibung..." style="flex: 1;">
-                        <button class="btn-add" onclick="addActivity()"><i class="fa-solid fa-plus"></i></button>
-                    </div>
-                </div>
-
-                <div class="activity-grid" id="activity-container"></div>
             </div>
 
             <div class="bento-card col-span-12">
@@ -826,12 +791,6 @@
             { id: 1, title: 'Einkauf Albert Heijn', amount: 45.50, payer: 'Philipp' },
             { id: 2, title: 'Zugtickets Utrecht', amount: 18.20, payer: 'Laura' }
         ];
-        let activityData = JSON.parse(localStorage.getItem('utrecht_activity_data')) || [
-            { id: 1, title: 'Vredenburg Markt', category: 'Wochenmarkt', desc: 'Fr & Sa: Markt für frischen Käse & Stroopwafels.' },
-            { id: 2, title: 'Grachtenfahrt & Domturm', category: 'Utrecht', desc: 'Grachtentour und Blick vom Domturm.' },
-            { id: 3, title: 'Pyramide von Austerlitz', category: 'Natur', desc: 'Historisches Denkmal mitten im Wald.' },
-            { id: 4, title: 'Kasteel de Haar', category: 'Kultur', desc: 'Größtes Schloss der Niederlande.' }
-        ];
 
         const mapPlaces = [
             { name: "EuroParcs De Utrechtse Heuvelrug", cat: "Holiday Park (Unterkunft)", lat: 52.0620, lng: 5.3850 },
@@ -853,7 +812,6 @@
             renderSchedule();
             renderPackList();
             renderExpenses();
-            renderActivities();
             loadFromGoogleSheets(true);
             
             setInterval(() => {
@@ -1113,58 +1071,13 @@
             saveAndRender();
         }
 
-        function renderActivities() {
-            const container = document.getElementById('activity-container');
-            container.innerHTML = '';
-            activityData.forEach((act) => {
-                const div = document.createElement('div');
-                div.className = 'activity-item';
-                div.innerHTML = `
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span class="activity-tag">${escapeHtml(act.category)}</span>
-                            <button class="btn-delete" onclick="deleteActivity(${act.id})" style="font-size: 0.8rem;"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>
-                        <div class="activity-title">${escapeHtml(act.title)}</div>
-                        <div class="activity-desc">${escapeHtml(act.desc)}</div>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function addActivity() {
-            const titleInput = document.getElementById('act-title');
-            const catInput = document.getElementById('act-category');
-            const descInput = document.getElementById('act-desc');
-
-            const title = titleInput.value.trim();
-            const category = catInput.value.trim() || 'Ausflug';
-            const desc = descInput.value.trim();
-
-            if (!title) return;
-
-            activityData.push({ id: Date.now(), title, category, desc });
-            titleInput.value = '';
-            catInput.value = '';
-            descInput.value = '';
-            saveAndRender();
-        }
-
-        function deleteActivity(actId) {
-            activityData = activityData.filter(a => a.id !== actId);
-            saveAndRender();
-        }
-
         function saveAndRender() {
             localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
             localStorage.setItem('utrecht_schedule_data', JSON.stringify(scheduleData));
             localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
-            localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
             renderSchedule();
             renderPackList();
             renderExpenses();
-            renderActivities();
             syncToGoogleSheets();
         }
 
@@ -1199,7 +1112,7 @@
         function syncToGoogleSheets() {
             if (!sheetUrl) return;
             updateSyncBadge('syncing');
-            const payload = { packData, scheduleData, expenseData, activityData };
+            const payload = { packData, scheduleData, expenseData };
             fetch(sheetUrl, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -1229,24 +1142,20 @@
                         if (data.packData) packData = sanitizePackData(data.packData);
                         if (data.scheduleData) scheduleData = sanitizeScheduleData(data.scheduleData);
                         if (data.expenseData) expenseData = data.expenseData;
-                        if (data.activityData) activityData = data.activityData;
                         
                         localStorage.setItem('utrecht_pack_data', JSON.stringify(packData));
                         localStorage.setItem('utrecht_schedule_data', JSON.stringify(scheduleData));
                         localStorage.setItem('utrecht_expense_data', JSON.stringify(expenseData));
-                        localStorage.setItem('utrecht_activity_data', JSON.stringify(activityData));
                     }
                     renderSchedule();
                     renderPackList();
                     renderExpenses();
-                    renderActivities();
                     updateSyncBadge('connected');
                 })
                 .catch(() => {
                     renderSchedule();
                     renderPackList();
                     renderExpenses();
-                    renderActivities();
                     updateSyncBadge('connected');
                 });
         }
